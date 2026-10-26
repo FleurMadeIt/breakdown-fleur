@@ -1,0 +1,27 @@
+{
+  "name": "breakdown-fleur",
+  "version": "1.0.0",
+  "description": "Générateur de breakdowns VFX FleurMadeIt",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "prep": "node scripts/prep.mjs",
+    "render": "node scripts/render.mjs",
+    "postinstall": "node scripts/fonts.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@remotion/cli": "4.0.539",
+    "@remotion/fonts": "4.0.539",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "4.0.539"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@types/react": "^18.3.31",
+    "typescript": "5.9.3"
+  }
+}

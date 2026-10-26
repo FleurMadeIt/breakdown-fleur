@@ -1,0 +1,8 @@
+node_modules/
+out/
+work/
+public/shots/
+shots/*.json
+.DS_Store
+public/fonts/
+package-lock.json

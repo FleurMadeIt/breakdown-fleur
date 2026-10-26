@@ -1,0 +1,10 @@
+{
+  "title": "Vega — sh010",
+  "framing": "fit",
+  "cropX": 0.5,
+  "labels": { "02": "WIREFRAME" },
+  "start": 0,
+  "duration": 6,
+  "sequenceFps": 25,
+  "status": "draft"
+}

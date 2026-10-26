@@ -1,0 +1,50 @@
+name: Rendu breakdown
+
+# Déclenché par Apps Script quand un shot passe en "status": "ready" dans Drive/Breakdowns/_inbox.
+# client_payload : { folder_id, shot_name, out_folder_id, token }
+on:
+  repository_dispatch:
+    types: [render-breakdown]
+
+concurrency:
+  group: breakdown-${{ github.event.client_payload.folder_id }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      FOLDER_ID: ${{ github.event.client_payload.folder_id }}
+      OUT_FOLDER_ID: ${{ github.event.client_payload.out_folder_id }}
+      SHOT: ${{ github.event.client_payload.shot_name }}
+    steps:
+      - name: Masquer le jeton Drive
+        run: |
+          TOKEN=$(jq -r '.client_payload.token' "$GITHUB_EVENT_PATH")
+          echo "::add-mask::$TOKEN"
+          echo "DRIVE_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installer ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - run: npm install --no-audit --no-fund
+
+      - name: Télécharger le shot depuis Drive
+        run: node scripts/drive.mjs fetch "$FOLDER_ID" "work/$SHOT"
+
+      - name: Rendu Remotion
+        run: node scripts/render.mjs "work/$SHOT" out
+
+      - name: Publier dans Drive/_out
+        run: node scripts/drive.mjs publish "$FOLDER_ID" "$OUT_FOLDER_ID" "$(ls out/*.mp4 | head -1)"
+
+      - name: Signaler l'erreur dans shot.json
+        if: failure()
+        run: node scripts/drive.mjs fail "$FOLDER_ID" "Le rendu a échoué, voir GitHub Actions run ${{ github.run_id }}"
