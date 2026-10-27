@@ -232,7 +232,7 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
           <AbsoluteFill
             style={{
               background:
-                'linear-gradient(to top, rgba(8,9,10,0.37) 0%, rgba(8,9,10,0.33) 22%, rgba(8,9,10,0.18) 34%, rgba(8,9,10,0) 48%), linear-gradient(to bottom, rgba(8,9,10,0.31) 0%, rgba(8,9,10,0.2) 16%, rgba(8,9,10,0) 28%)',
+                'linear-gradient(to top, rgba(8,9,10,0.55) 0%, rgba(8,9,10,0.49) 22%, rgba(8,9,10,0.27) 34%, rgba(8,9,10,0) 48%), linear-gradient(to bottom, rgba(8,9,10,0.47) 0%, rgba(8,9,10,0.3) 16%, rgba(8,9,10,0) 28%)',
             }}
           />
           <div style={{position: 'absolute', left: L, right: R, top: VIDEO.safeTop}}>{overline}</div>
