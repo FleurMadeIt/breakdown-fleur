@@ -5,7 +5,7 @@
 // Le dossier contient des couches numérotées :
 //   01_plate.mov   02_wire.mp4   03_light/ (séquence PNG/EXR/JPG/TIFF)   99_final.mp4
 // et, en option, un shot.json :
-//   { "title": "", "framing": "fit" | "crop", "cropX": 0.5,
+//   { "title": "", "framing": "fit" | "crop" | "both", "cropX": 0.5,
 //     "labels": { "02": "WIREFRAME" }, "start": 0, "duration": 6, "sequenceFps": 25 }
 //
 // Sortie : public/shots/<slug>/NN_label.mp4 (H.264, 30 fps, sans son) + shots/<slug>.json (props Remotion)
@@ -43,7 +43,8 @@ const slug = path
 
 const cfgPath = path.join(shotDir, 'shot.json');
 const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {};
-const framing = cfg.framing === 'crop' ? 'crop' : 'fit';
+// fit, crop, ou both (rend les deux versions ; on prépare alors en résolution crop, la plus exigeante)
+const framing = ['crop', 'both'].includes(cfg.framing) ? cfg.framing : 'fit';
 const cropX = Math.min(1, Math.max(0, Number(cfg.cropX ?? 0.5)));
 const start = Math.max(0, Number(cfg.start ?? 0));
 const duration = Math.min(MAX_SECONDS, Number(cfg.duration ?? MAX_SECONDS));
@@ -165,5 +166,5 @@ const props = {
 fs.mkdirSync(path.join(ROOT, 'shots'), {recursive: true});
 const propsPath = path.join(ROOT, 'shots', `${slug}.json`);
 fs.writeFileSync(propsPath, JSON.stringify(props, null, 2));
-console.log(`✓ ${out.length} couches prêtes · ${framing}${framing === 'crop' ? ` (cropX ${cropX})` : ''} · ${W}×${H}`);
+console.log(`✓ ${out.length} couches prêtes · ${framing}${framing !== 'fit' ? ` (cropX ${cropX})` : ''} · ${W}×${H}`);
 console.log(`  props : ${path.relative(ROOT, propsPath)}`);

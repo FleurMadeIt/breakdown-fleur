@@ -24,7 +24,7 @@ Le texte après le numéro devient le label (`02_wire` → WIRE). Pour un autre 
 | Champ | Valeurs | Défaut |
 |---|---|---|
 | `title` | texte affiché en haut, ex. « Vega — sh010 » | vide |
-| `framing` | `fit` (shot entier dans une carte) ou `crop` (plein écran recadré) | `fit` |
+| `framing` | `fit` (shot entier dans une carte), `crop` (plein écran recadré) ou `both` (les deux, deux MP4) | `fit` |
 | `cropX` | position du recadrage, 0 = gauche, 0.5 = centre, 1 = droite | `0.5` |
 | `labels` | `{ "02": "WIREFRAME" }` | nom du fichier |
 | `start` / `duration` | portion du plan à utiliser, en secondes (15 s max) | `0` / `15` |

@@ -3,7 +3,7 @@
 // Le jeton d'accès vient d'Apps Script (ScriptApp.getOAuthToken), valable 1 h, jamais stocké.
 //
 //   node scripts/drive.mjs fetch   <folderId> <dossierLocal>
-//   node scripts/drive.mjs publish <folderId> <outFolderId> <fichier.mp4>
+//   node scripts/drive.mjs publish <folderId> <outFolderId> <fichier.mp4> [autre.mp4 …]
 //   node scripts/drive.mjs fail    <folderId> <message>
 //
 // Variable d'environnement requise : DRIVE_TOKEN
@@ -124,10 +124,14 @@ try {
     const [folderId, localDir] = args;
     await fetchFolder(folderId, localDir);
   } else if (cmd === 'publish') {
-    const [folderId, outFolderId, file] = args;
-    const up = await uploadLarge(outFolderId, path.basename(file), 'video/mp4', file);
-    console.log(`  ↑ ${path.basename(file)} → ${up.webViewLink}`);
-    await setStatus(folderId, {status: 'done', outputId: up.id, outputUrl: up.webViewLink, error: null});
+    const [folderId, outFolderId, ...files] = args;
+    const outputs = [];
+    for (const file of files) {
+      const up = await uploadLarge(outFolderId, path.basename(file), 'video/mp4', file);
+      console.log(`  \u2191 ${path.basename(file)} \u2192 ${up.webViewLink}`);
+      outputs.push({name: path.basename(file), id: up.id, url: up.webViewLink});
+    }
+    await setStatus(folderId, {status: 'done', outputs, outputId: outputs[0]?.id, outputUrl: outputs[0]?.url, error: null});
     // sources à la corbeille (vidée automatiquement par Drive après 30 jours)
     await api(`${API}/files/${folderId}`, {
       method: 'PATCH',

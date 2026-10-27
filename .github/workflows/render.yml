@@ -47,7 +47,7 @@ jobs:
         run: node scripts/render.mjs "work/$SHOT" out
 
       - name: Publier dans Drive/_out
-        run: node scripts/drive.mjs publish "$FOLDER_ID" "$OUT_FOLDER_ID" "$(ls out/*.mp4 | head -1)"
+        run: node scripts/drive.mjs publish "$FOLDER_ID" "$OUT_FOLDER_ID" out/*.mp4
 
       - name: Signaler l'erreur dans shot.json
         if: failure()

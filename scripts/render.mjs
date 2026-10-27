@@ -29,13 +29,18 @@ const props = JSON.parse(fs.readFileSync(slug, 'utf8'));
 
 const outDir = path.resolve(outArg ?? path.join(ROOT, 'out'));
 fs.mkdirSync(outDir, {recursive: true});
-const outFile = path.join(outDir, `${props.shotName}_breakdown.mp4`);
 
-const args = [
-  'remotion', 'render', 'src/index.ts', 'Breakdown', outFile,
-  `--props=${slug}`, '--codec=h264', '--crf=16', '--image-format=jpeg', '--jpeg-quality=95',
-];
-if (process.env.REMOTION_BROWSER) args.push(`--browser-executable=${process.env.REMOTION_BROWSER}`);
-
-execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', args, {stdio: 'inherit', cwd: ROOT, shell: process.platform === 'win32'});
-console.log(`\n✓ Breakdown : ${outFile}`);
+// "both" : deux rendus, un fit et un crop, à partir des mêmes couches préparées
+const variants = props.framing === 'both' ? ['fit', 'crop'] : [props.framing];
+for (const v of variants) {
+  const vProps = path.join(ROOT, 'shots', `${name}.${v}.json`);
+  fs.writeFileSync(vProps, JSON.stringify({...props, framing: v}, null, 2));
+  const outFile = path.join(outDir, variants.length > 1 ? `${props.shotName}_${v}_breakdown.mp4` : `${props.shotName}_breakdown.mp4`);
+  const args = [
+    'remotion', 'render', 'src/index.ts', 'Breakdown', outFile,
+    `--props=${vProps}`, '--codec=h264', '--crf=16', '--image-format=jpeg', '--jpeg-quality=95',
+  ];
+  if (process.env.REMOTION_BROWSER) args.push(`--browser-executable=${process.env.REMOTION_BROWSER}`);
+  execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', args, {stdio: 'inherit', cwd: ROOT, shell: process.platform === 'win32'});
+  console.log(`\n\u2713 Breakdown (${v}) : ${outFile}`);
+}
