@@ -18,6 +18,7 @@ jobs:
       FOLDER_ID: ${{ github.event.client_payload.folder_id }}
       OUT_FOLDER_ID: ${{ github.event.client_payload.out_folder_id }}
       SHOT: ${{ github.event.client_payload.shot_name }}
+      BREAKDOWN_DELETE_SOURCES: '1'
     steps:
       - name: Masquer le jeton Drive
         run: |

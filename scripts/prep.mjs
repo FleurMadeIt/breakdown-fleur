@@ -8,7 +8,7 @@
 //   { "title": "", "framing": "fit" | "crop" | "both", "cropX": 0.5,
 //     "labels": { "02": "WIREFRAME" }, "start": 0, "duration": 6, "sequenceFps": 25 }
 //
-// Sortie : public/shots/<slug>/NN_label.mp4 (H.264, 30 fps, sans son) + shots/<slug>.json (props Remotion)
+// Sortie : public/shots/<slug>/<fit|crop>/NN_label.mp4 (H.264, 30 fps, sans son) + shots/<slug>.json (props Remotion)
 
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -86,40 +86,51 @@ layers.sort((a, b) => Number(a.num) - Number(b.num));
 const fi = layers.findIndex((l) => /^final$/i.test(l.key));
 if (fi >= 0 && fi !== layers.length - 1) layers.push(layers.splice(fi, 1)[0]);
 
-// ---- 2. résolution cible, d'après la couche finale
+// ---- 2. résolutions cibles, d'après la couche finale
 const probe = (args) => JSON.parse(run('ffprobe', ['-v', 'error', '-print_format', 'json', ...args]));
 const finalL = layers[layers.length - 1];
 const probeTarget = finalL.kind === 'seq' ? path.join(finalL.path, finalL.frames[0]) : finalL.path;
 const st = probe(['-select_streams', 'v:0', '-show_entries', 'stream=width,height', probeTarget]).streams?.[0];
 if (!st) die(`Impossible de lire ${probeTarget}`);
 const even = (n) => Math.max(2, Math.round(n / 2) * 2);
-// fit : cadre de 1000 px de large → 1280 suffit. crop : on garde jusqu'à 1920 px de haut pour rester net.
-let W, H;
-if (framing === 'fit') {
-  W = even(Math.min(st.width, 1280));
-  H = even((W * st.height) / st.width);
-} else {
-  H = even(Math.min(st.height, 1920));
-  W = even((H * st.width) / st.height);
-}
+const variants = framing === 'both' ? ['fit', 'crop'] : [framing];
 
-// ---- 3. normalisation ffmpeg
+// fit : le shot entier, 1280 px de large suffisent pour la carte de 1000 px.
+const FW = even(Math.min(st.width, 1280));
+const FH = even((FW * st.height) / st.width);
+// crop : on recadre DÈS MAINTENANT en 1080×1920 à la position cropX. Le rendu ne lit alors
+// que les pixels utiles, au lieu de décoder un plan 4K entier à chaque image.
+const CW = 1080;
+const CH = 1920;
+const wide = st.width / st.height >= CW / CH;
+const SW = wide ? even((st.width * CH) / st.height) : CW;
+const SH = wide ? CH : even((st.height * CW) / st.width);
+const geom = {
+  fit: {w: FW, h: FH, vf: `scale=${FW}:${FH}:force_original_aspect_ratio=increase:flags=lanczos,crop=${FW}:${FH}`},
+  crop: {
+    w: CW,
+    h: CH,
+    vf: `scale=${SW}:${SH}:force_original_aspect_ratio=increase:flags=lanczos,crop=${CW}:${CH}:(iw-${CW})*${cropX}:(ih-${CH})/2`,
+  },
+};
+
+// ---- 3. normalisation ffmpeg : chaque couche est décodée une seule fois, puis sort en fit et/ou crop
 const outDir = path.join(ROOT, 'public', 'shots', slug);
 fs.rmSync(outDir, {recursive: true, force: true});
-fs.mkdirSync(outDir, {recursive: true});
+for (const v of variants) fs.mkdirSync(path.join(outDir, v), {recursive: true});
 
-const out = [];
+const out = Object.fromEntries(variants.map((v) => [v, []]));
 for (const l of layers) {
   const label = String(cfg.labels?.[l.num] ?? l.key.replace(/[_-]+/g, ' ')).toUpperCase();
   const file = `${l.num.padStart(2, '0')}_${l.key.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.mp4`;
-  const dst = path.join(outDir, file);
   const isExr = l.kind === 'seq' ? /\.exr$/i.test(l.frames[0]) : /\.exr$/i.test(l.path);
 
   const input = [];
   if (isExr) input.push('-apply_trc', 'iec61966_2_1'); // EXR linéaire → sRGB
+  let list = null;
   if (l.kind === 'seq') {
     // liste concat : marche aussi sous Windows (pas de glob)
-    const list = path.join(outDir, `${file}.txt`);
+    list = path.join(outDir, `${file}.txt`);
     const step = 1 / seqFps;
     fs.writeFileSync(
       list,
@@ -133,26 +144,34 @@ for (const l of layers) {
     input.push('-ss', String(start), '-t', String(duration), '-i', l.path);
   }
 
-  const vf = `fps=${FPS},scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H},format=yuv420p`;
+  const split = variants.length > 1 ? `split=${variants.length}${variants.map((v) => `[s${v}]`).join('')};` : '';
+  const graph =
+    `[0:v]fps=${FPS}${variants.length > 1 ? ',' + split : ''}` +
+    variants
+      .map((v) => `${variants.length > 1 ? `[s${v}]` : (variants.length === 1 ? ',' : '')}${geom[v].vf},format=yuv420p[o${v}]`)
+      .join(';');
+  const outputs = variants.flatMap((v) => [
+    '-map', `[o${v}]`, '-t', String(duration), '-an',
+    '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-movflags', '+faststart', path.join(outDir, v, file),
+  ]);
   process.stdout.write(`  → ${label.padEnd(14)} ${path.basename(l.path)} `);
   try {
-    run('ffmpeg', [
-      '-y', '-v', 'error', ...input,
-      '-t', String(duration), '-an', '-vf', vf,
-      '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-movflags', '+faststart', dst,
-    ]);
+    run('ffmpeg', ['-y', '-v', 'error', ...input, '-filter_complex', graph, ...outputs]);
   } catch (err) {
     console.log('');
     die(`ffmpeg a échoué sur ${l.path}\n${err.stderr?.toString() ?? err.message}`);
   }
-  if (l.kind === 'seq') fs.rmSync(path.join(outDir, `${file}.txt`), {force: true});
+  if (list) fs.rmSync(list, {force: true});
 
-  const frames = Number(
-    probe(['-count_packets', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_packets', dst]).streams[0]
-      .nb_read_packets,
-  );
-  console.log(`${frames} f`);
-  out.push({src: `shots/${slug}/${file}`, label, durationInFrames: frames, width: W, height: H});
+  for (const v of variants) {
+    const dst = path.join(outDir, v, file);
+    const frames = Number(
+      probe(['-count_packets', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_packets', dst]).streams[0]
+        .nb_read_packets,
+    );
+    out[v].push({src: `shots/${slug}/${v}/${file}`, label, durationInFrames: frames, width: geom[v].w, height: geom[v].h});
+  }
+  console.log(`${out[variants[0]].at(-1).durationInFrames} f`);
 }
 
 const props = {
@@ -160,11 +179,14 @@ const props = {
   title: cfg.title ?? '',
   framing,
   cropX,
-  layers: out,
-  loopFrames: Math.min(...out.map((l) => l.durationInFrames)),
+  variants: Object.fromEntries(
+    variants.map((v) => [v, {layers: out[v], loopFrames: Math.min(...out[v].map((l) => l.durationInFrames))}]),
+  ),
 };
 fs.mkdirSync(path.join(ROOT, 'shots'), {recursive: true});
 const propsPath = path.join(ROOT, 'shots', `${slug}.json`);
 fs.writeFileSync(propsPath, JSON.stringify(props, null, 2));
-console.log(`✓ ${out.length} couches prêtes · ${framing}${framing !== 'fit' ? ` (cropX ${cropX})` : ''} · ${W}×${H}`);
+console.log(
+  `✓ ${layers.length} couches prêtes · ${variants.map((v) => `${v} ${geom[v].w}×${geom[v].h}`).join(' + ')}${framing !== 'fit' ? ` (cropX ${cropX})` : ''}`,
+);
 console.log(`  props : ${path.relative(ROOT, propsPath)}`);

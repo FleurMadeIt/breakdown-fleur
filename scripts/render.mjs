@@ -27,14 +27,19 @@ const name = path
 const slug = path.join(ROOT, 'shots', `${name}.json`);
 const props = JSON.parse(fs.readFileSync(slug, 'utf8'));
 
+// En rendu automatique, les sources (souvent du ProRes lourd) ne servent plus une fois préparées : on libère le disque.
+if (process.env.BREAKDOWN_DELETE_SOURCES === '1') fs.rmSync(path.resolve(shotDir), {recursive: true, force: true});
+
 const outDir = path.resolve(outArg ?? path.join(ROOT, 'out'));
 fs.mkdirSync(outDir, {recursive: true});
 
 // "both" : deux rendus, un fit et un crop, à partir des mêmes couches préparées
-const variants = props.framing === 'both' ? ['fit', 'crop'] : [props.framing];
+const variants = Object.keys(props.variants);
 for (const v of variants) {
   const vProps = path.join(ROOT, 'shots', `${name}.${v}.json`);
-  fs.writeFileSync(vProps, JSON.stringify({...props, framing: v}, null, 2));
+  const {variants: _all, ...base} = props;
+  // en crop, les couches sont déjà recadrées à la bonne position : on les centre simplement
+  fs.writeFileSync(vProps, JSON.stringify({...base, ...props.variants[v], framing: v, cropX: v === 'crop' ? 0.5 : props.cropX}, null, 2));
   const outFile = path.join(outDir, variants.length > 1 ? `${props.shotName}_${v}_breakdown.mp4` : `${props.shotName}_breakdown.mp4`);
   const args = [
     'remotion', 'render', 'src/index.ts', 'Breakdown', outFile,
