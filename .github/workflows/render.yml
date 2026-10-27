@@ -39,6 +39,10 @@ jobs:
       - name: Télécharger le shot depuis Drive
         run: node scripts/drive.mjs fetch "$FOLDER_ID" "work/$SHOT"
 
+      - name: Footage de test (si le dossier ne contient que shot.json avec "test": true)
+        run: |
+          if jq -e '.test == true' "work/$SHOT/shot.json" >/dev/null 2>&1; then node scripts/make-test.mjs "work/$SHOT"; fi
+
       - name: Rendu Remotion
         run: node scripts/render.mjs "work/$SHOT" out
 
