@@ -1,48 +1,34 @@
 # Installer Breakdown Fleur chez toi
 
-Tu déposes les couches d'un shot dans un dossier Google Drive, et tu récupères 5 à 10 minutes plus tard un breakdown avant/après en 9:16, prêt pour Instagram (version fit, crop, ou les deux).
+Tu déposes les couches d'un shot dans Google Drive et, 5 à 10 minutes plus tard, tu récupères un breakdown avant/après en 9:16 prêt pour Instagram. C'est gratuit, tout tourne sur tes comptes (Google + GitHub), et personne d'autre ne voit tes shots.
 
-Tout tourne sur **tes** comptes, gratuitement : ton Google Drive, ta copie du repo sur GitHub. Personne d'autre ne voit tes shots. Compte environ 15 minutes.
+L'installation prend 3 étapes, environ 5 minutes.
 
-Il te faut :
-- un compte **GitHub** (gratuit) ;
-- un compte **Google** (Drive) ;
-- en option, un compte **claude.ai** avec le connecteur Google Drive, pour utiliser la page de réglage. Sans, l'outil marche aussi (voir l'étape 5).
+## 1. Copie le repo
+
+Clique **[Use this template → Create a new repository](https://github.com/new?template_name=breakdown-fleur&template_owner=FleurMadeIt)**. Laisse le nom `breakdown-fleur` et coche **Public**, puis clique **Create repository**.
+
+## 2. Crée ta clé GitHub
+
+Ouvre **[ce lien](https://github.com/settings/personal-access-tokens/new?name=breakdown-fleur&description=Relais%20Breakdown%20Fleur&expires_in=366&contents=write)**. Tout est déjà rempli, sauf une chose : sous **Repository access**, choisis *Only select repositories* puis `breakdown-fleur`.
+
+Clique **Generate token** et copie la clé (`github_pat_…`).
+
+## 3. Installe le relais Google
+
+1. Ouvre [script.google.com](https://script.google.com) et clique **Nouveau projet**.
+2. Efface tout, puis colle le contenu de [ce fichier](https://raw.githubusercontent.com/FleurMadeIt/breakdown-fleur/main/apps-script/Code.gs) (Ctrl/Cmd + A, puis copier).
+3. Tout en haut, colle ta clé entre les guillemets : `const GITHUB_TOKEN = 'github_pat_…';`
+4. Enregistre (Ctrl/Cmd + S), vérifie que **setup** est sélectionné dans la barre du haut, puis clique **Exécuter**.
+5. Google demande l'autorisation. Clique **Examiner les autorisations**, choisis ton compte, puis *Paramètres avancés* → **Accéder au projet (non sécurisé)** → **Autoriser**. L'avertissement s'affiche parce que c'est ton propre script et pas une appli publique.
+
+Quand le journal affiche **✅ Tout est prêt**, c'est terminé. Un dossier **Breakdowns** est apparu dans ton Drive.
 
 ---
 
-## 1. Copier le repo
+## Utiliser l'outil
 
-1. Ouvre [github.com/FleurMadeIt/breakdown-fleur](https://github.com/FleurMadeIt/breakdown-fleur) et clique **Use this template → Create a new repository**.
-2. Nom : `breakdown-fleur`. Laisse-le en **Public** : GitHub offre alors les minutes de rendu sans limite. Aucun secret n'est stocké dans le repo.
-3. Dans ta copie, onglet **Actions** : si GitHub demande d'activer les workflows, clique **I understand… enable them**.
-
-Note le nom complet de ta copie, du type `ton-compte/breakdown-fleur`.
-
-## 2. Créer ta clé GitHub
-
-1. Va sur [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new).
-2. **Token name** : `breakdown-fleur-apps-script`. **Expiration** : la plus longue proposée.
-3. **Repository access** : *Only select repositories* → ta copie `breakdown-fleur`.
-4. **Permissions** → *Repositories* → **Contents** : **Read and write**. Rien d'autre.
-5. **Generate token**, puis copie la clé (`github_pat_…`). Elle ne s'affiche qu'une fois. Ne la colle nulle part ailleurs qu'à l'étape 3.
-
-## 3. Installer le relais Google (Apps Script)
-
-1. Va sur [script.google.com](https://script.google.com) → **Nouveau projet**. Renomme-le `Breakdown Fleur — relais`.
-2. Efface le contenu de `Code.gs` et colle à la place tout le fichier [`apps-script/Code.gs`](apps-script/Code.gs) de ta copie. Enregistre (Ctrl/Cmd + S).
-3. ⚙️ **Paramètres du projet** → **Propriétés du script** → ajoute :
-   - `GITHUB_REPO` = `ton-compte/breakdown-fleur`
-   - `GITHUB_TOKEN` = ta clé de l'étape 2
-   puis **Enregistrer les propriétés de script**.
-4. Retour à l'éditeur : choisis la fonction **`setup`** et clique **Exécuter**.
-5. Google demande une autorisation : **Examiner les autorisations** → ton compte → *Paramètres avancés* → **Accéder à Breakdown Fleur — relais (non sécurisé)** → **Autoriser**. C'est ton propre script, pas une appli publique, d'où l'avertissement.
-
-`setup` crée dans ton Drive le dossier **Breakdowns**, avec `_inbox` (là où tu déposes) et `_out` (là où arrivent les MP4), puis vérifie les dépôts toutes les 5 minutes.
-
-## 4. Préparer un shot
-
-Dans `Breakdowns/_inbox`, crée un dossier par shot avec les couches numérotées dans l'ordre :
+**1. Dépose un shot.** Dans `Breakdowns/_inbox`, crée un dossier par shot avec les couches numérotées :
 
 ```
 vega_sh010/
@@ -52,25 +38,20 @@ vega_sh010/
   99_final.mov     ← la couche « final » passe toujours en dernier
 ```
 
-Le texte après le numéro devient le label (`02_wire` → WIRE). Le ProRes passe très bien, le rendu le convertit.
+Le texte après le numéro sert de label (`02_wire` devient WIRE). Le ProRes est accepté.
 
-## 5. Lancer le rendu
+**2. Lance le rendu.** Ouvre la [page Breakdown Fleur](https://claude.ai/artifact/TKygS8YucC5dMoRBJcvxvN) (il faut un compte claude.ai avec Google Drive connecté). Elle retrouve ton dossier toute seule. Choisis le shot, règle fit / crop / les deux, puis clique **Lancer le rendu**.
 
-**Avec la page de réglage (claude.ai)** : ouvre la [page Breakdown Fleur](https://claude.ai/artifact/TKygS8YucC5dMoRBJcvxvN). Elle retrouve ton dossier Breakdowns toute seule (autorise Google Drive la première fois). Choisis le shot, règle fit / crop / les deux, le recadrage, le titre, puis **Lancer le rendu**.
-
-**Sans la page** : dépose dans le dossier du shot un fichier `shot.json` :
+Sans claude.ai, dépose plutôt dans le dossier du shot un fichier `shot.json` qui contient :
 
 ```json
-{ "title": "Vega — sh010", "framing": "both", "cropX": 0.5, "duration": 10, "status": "ready" }
+{ "title": "Vega — sh010", "framing": "both", "cropX": 0.5, "status": "ready" }
 ```
 
-`framing` : `fit`, `crop` ou `both`. `cropX` : position du recadrage, de 0 (gauche) à 1 (droite). Tous les réglages sont détaillés dans le [README](README.md).
-
-Dans les 5 minutes, le rendu part sur GitHub (onglet **Actions** de ta copie). Le ou les MP4 arrivent dans `Breakdowns/_out`, et les sources du shot partent à la corbeille Drive.
+**3. Récupère le MP4** dans `Breakdowns/_out`, 5 à 10 minutes plus tard. Les sources du shot partent alors à la corbeille Drive.
 
 ## En cas de souci
 
-- **Le shot passe en « Erreur »** : le message est dans son `shot.json` (champ `error`), et le détail dans l'onglet **Actions** de ta copie.
-- **`GitHub 404`** : la clé n'a pas accès à ta copie, ou `GITHUB_REPO` est mal écrit. Vérifie l'étape 2 (repository + Contents en lecture/écriture).
-- **Rien ne se passe** : dans Apps Script, menu ⏰ **Déclencheurs**, il doit y avoir `checkInbox` toutes les 5 minutes. Sinon, relance `setup`.
-- **Changer le style** (couleurs, typo, durées) : `src/theme.ts` dans ta copie.
+- **setup affiche une erreur** : le message dit quoi corriger, en général une clé mal copiée ou le repo pas coché à l'étape 2.
+- **Le shot passe en « Erreur »** : le détail est dans l'onglet **Actions** de ton repo.
+- **Rien ne se passe** : relance **setup** dans Apps Script.

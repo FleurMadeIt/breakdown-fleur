@@ -2,23 +2,24 @@
  * Breakdown Fleur — relais Drive → GitHub.
  * Toutes les 5 min : cherche dans Drive/Breakdowns/_inbox les shots dont le shot.json
  * est en "status": "ready", les passe en "queued" et lance le rendu sur GitHub Actions.
- *
  * Installation : voir INSTALL.md à la racine du repo.
- * Propriétés du script à renseigner (⚙️ Paramètres du projet → Propriétés du script) :
- *   GITHUB_REPO   ton-compte/breakdown-fleur
- *   GITHUB_TOKEN  github_pat_…  (accès à ce repo, permission Contents en lecture/écriture)
- * Les propriétés INBOX_ID et OUT_ID sont remplies toutes seules par setup().
  */
+
+// ⬇️ Colle ta clé GitHub entre les guillemets, enregistre, puis lance setup.
+const GITHUB_TOKEN = '';
+
+// Optionnel : seulement si ta copie du repo ne s'appelle pas breakdown-fleur (ex. 'ton-compte/mon-repo').
+const GITHUB_REPO = '';
 
 function config_() {
   const p = PropertiesService.getScriptProperties();
   const cfg = {
     INBOX_ID: p.getProperty('INBOX_ID'),
     OUT_ID: p.getProperty('OUT_ID'),
-    REPO: (p.getProperty('GITHUB_REPO') || '').trim(),
-    TOKEN: (p.getProperty('GITHUB_TOKEN') || '').trim(),
+    REPO: (GITHUB_REPO || p.getProperty('GITHUB_REPO') || '').trim(),
+    TOKEN: (GITHUB_TOKEN || p.getProperty('GITHUB_TOKEN') || '').trim(),
   };
-  if (!cfg.INBOX_ID || !cfg.OUT_ID) throw new Error('Lance setup() une fois pour créer les dossiers Breakdowns.');
+  if (!cfg.INBOX_ID || !cfg.OUT_ID) throw new Error('Lance setup une fois pour créer les dossiers Breakdowns.');
   return cfg;
 }
 
@@ -61,8 +62,8 @@ function checkInbox() {
 }
 
 function dispatch_(CONFIG, folder, cfg) {
-  if (!CONFIG.REPO) throw new Error('GITHUB_REPO manquant dans les propriétés du script (ex. ton-compte/breakdown-fleur)');
-  if (!CONFIG.TOKEN) throw new Error('GITHUB_TOKEN manquant dans les propriétés du script');
+  if (!CONFIG.REPO) throw new Error('Repo GitHub inconnu : relance setup');
+  if (!CONFIG.TOKEN) throw new Error('Clé GitHub manquante : colle-la en haut du script puis relance setup');
   const res = UrlFetchApp.fetch('https://api.github.com/repos/' + CONFIG.REPO + '/dispatches', {
     method: 'post',
     contentType: 'application/json',
@@ -126,23 +127,47 @@ function folderIn_(parent, name) {
   return it.hasNext() ? it.next() : parent.createFolder(name);
 }
 
+/** Appel GitHub avec ta clé. */
+function github_(token, path) {
+  const res = UrlFetchApp.fetch('https://api.github.com' + path, {
+    headers: {Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json'},
+    muteHttpExceptions: true,
+  });
+  return {code: res.getResponseCode(), body: res.getResponseCode() === 200 ? JSON.parse(res.getContentText()) : null};
+}
+
 /**
- * À lancer une seule fois : crée (ou retrouve) Breakdowns/_inbox et _out à la racine du Drive,
- * enregistre leurs identifiants et crée le déclencheur toutes les 5 minutes.
+ * À lancer une seule fois : vérifie la clé, retrouve ta copie du repo, crée Breakdowns/_inbox et _out
+ * à la racine du Drive et le déclencheur toutes les 5 minutes.
  */
 function setup() {
+  const p = PropertiesService.getScriptProperties();
+  const token = (GITHUB_TOKEN || p.getProperty('GITHUB_TOKEN') || '').trim();
+  if (!token) throw new Error('Colle ta clé GitHub en haut du script (const GITHUB_TOKEN = \'…\'), enregistre, puis relance setup.');
+
+  // le repo : celui indiqué, sinon <ton-compte>/breakdown-fleur
+  let repo = (GITHUB_REPO || p.getProperty('GITHUB_REPO') || '').trim();
+  if (!repo) {
+    const me = github_(token, '/user');
+    if (me.code !== 200) throw new Error('Clé GitHub refusée (' + me.code + ') : vérifie que tu l\'as copiée en entier.');
+    repo = me.body.login + '/breakdown-fleur';
+  }
+  const check = github_(token, '/repos/' + repo);
+  if (check.code !== 200) {
+    throw new Error('Impossible d\'accéder à ' + repo + ' (' + check.code + '). Vérifie que la clé donne accès à ce repo, ' +
+      'ou indique son nom exact dans GITHUB_REPO en haut du script.');
+  }
+  p.setProperty('GITHUB_REPO', repo);
+
   const root = folderIn_(DriveApp.getRootFolder(), 'Breakdowns');
   const inbox = folderIn_(root, '_inbox');
   const out = folderIn_(root, '_out');
-  const p = PropertiesService.getScriptProperties();
   p.setProperty('INBOX_ID', inbox.getId());
   p.setProperty('OUT_ID', out.getId());
 
   ScriptApp.getProjectTriggers().forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('checkInbox').timeBased().everyMinutes(5).create();
 
-  console.log('Dossier prêt : ' + root.getUrl());
-  if (!p.getProperty('GITHUB_REPO')) console.warn('Ajoute la propriété GITHUB_REPO (ex. ton-compte/breakdown-fleur).');
-  if (!p.getProperty('GITHUB_TOKEN')) console.warn('Ajoute la propriété GITHUB_TOKEN (ta clé GitHub).');
+  console.log('✅ Tout est prêt. Repo : ' + repo + ' — dépose tes shots ici : ' + inbox.getUrl());
   checkInbox();
 }
