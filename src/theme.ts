@@ -25,14 +25,19 @@ export const theme = {
   radius: {btn: 6, card: 8, panel: 12, large: 22, pill: 9999},
 } as const;
 
-// Format et zones protégées Instagram Reels
+// Format et zones protégées Instagram Reels (1080×1920).
+// Tout le texte reste dans la zone sûre : 250 px en haut, 420 px en bas, 70 px à gauche,
+// 55 px à droite en haut et 193 px à droite sous y = 1110 (colonne like / commentaire / partage).
 export const VIDEO = {
   width: 1080,
   height: 1920,
   fps: 30,
   safeTop: 250,
-  safeBottom: 330,
-  sideMargin: 40,
+  safeBottom: 420,
+  safeLeft: 70,
+  safeRight: 55,
+  safeRightLow: 193,
+  lowZoneStart: 1110,
 } as const;
 
 export const TIMING = {

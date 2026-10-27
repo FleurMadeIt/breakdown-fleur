@@ -144,20 +144,34 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
 
   const crop = framing === 'crop';
   const ref = layers[layers.length - 1];
-  const M = VIDEO.sideMargin;
-  const contentW = VIDEO.width - M * 2;
-  const titleSize = crop ? 88 : 104;
+  const L = VIDEO.safeLeft;
+  const R = VIDEO.safeRight;
+  // largeur sûre pour du texte placé dans le bas de l'écran (sous la colonne d'icônes)
+  const lowTextW = VIDEO.width - L - VIDEO.safeRightLow;
+  const upTextW = VIDEO.width - L - R;
   const tabsH = 70;
+  const longest = Math.max(...layers.map((l) => displayCase(l.label).length));
+  // le grand titre rétrécit si un label est long, pour ne jamais passer sous les icônes
+  const titleSize = Math.round(Math.min(crop ? 88 : 104, (crop ? lowTextW : upTextW) / (longest * 0.56)));
 
-  // fit : bloc [overline, grand label, carte du shot, labels] centré dans la zone protégée
-  const boxW = crop ? VIDEO.width : contentW;
-  const boxH = crop ? VIDEO.height : Math.round((boxW * ref.height) / ref.width);
-  const blockH = 40 + 28 + titleSize + 44 + boxH + 44 + tabsH;
+  // fit : bloc [overline, grand titre, carte du shot, labels] centré dans la zone sûre
   const safeH = VIDEO.height - VIDEO.safeTop - VIDEO.safeBottom;
+  const chrome = 40 + 28 + titleSize + 44 + 44 + tabsH;
+  let boxW = crop ? VIDEO.width : upTextW;
+  let boxH = crop ? VIDEO.height : Math.round((boxW * ref.height) / ref.width);
+  if (!crop && chrome + boxH > safeH) {
+    // plan haut (4:5, 1:1…) : on réduit la carte pour que les labels restent au-dessus de la zone des icônes
+    boxH = safeH - chrome;
+    boxW = Math.round((boxH * ref.width) / ref.height);
+  }
+  const boxLeft = crop ? 0 : L + Math.round((upTextW - boxW) / 2);
+  const blockH = chrome + boxH;
   const blockTop = VIDEO.safeTop + Math.max(0, (safeH - blockH) / 2);
   const titleTop = blockTop + 40 + 28;
   const boxTop = crop ? 0 : titleTop + titleSize + 44;
   const tabsTop = boxTop + boxH + 44;
+  // les labels passent sous y = 1110 ? alors ils s'arrêtent avant la colonne d'icônes
+  const tabsW = !crop && tabsTop + tabsH <= VIDEO.lowZoneStart ? upTextW : lowTextW;
 
   const media = (
     <>
@@ -219,12 +233,12 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
                 'linear-gradient(to top, rgba(8,9,10,0.92) 0%, rgba(8,9,10,0.55) 22%, rgba(8,9,10,0) 42%), linear-gradient(to bottom, rgba(8,9,10,0.6) 0%, rgba(8,9,10,0) 20%)',
             }}
           />
-          <div style={{position: 'absolute', left: M + 4, right: M + 4, top: VIDEO.safeTop - 30}}>{overline}</div>
+          <div style={{position: 'absolute', left: L, right: R, top: VIDEO.safeTop}}>{overline}</div>
           <div
             style={{
               position: 'absolute',
-              left: M + 4,
-              right: M,
+              left: L,
+              width: lowTextW,
               bottom: VIDEO.safeBottom + tabsH + 40,
             }}
           >
@@ -235,14 +249,14 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
               size={titleSize}
             />
           </div>
-          <div style={{position: 'absolute', left: M, right: M, bottom: VIDEO.safeBottom, display: 'flex'}}>
-            <LayerTabs labels={labels} activeness={activeness} maxWidth={contentW} />
+          <div style={{position: 'absolute', left: L, width: lowTextW, bottom: VIDEO.safeBottom, display: 'flex'}}>
+            <LayerTabs labels={labels} activeness={activeness} maxWidth={lowTextW} />
           </div>
         </>
       ) : (
         <>
-          <div style={{position: 'absolute', left: M + 4, right: M + 4, top: blockTop}}>{overline}</div>
-          <div style={{position: 'absolute', left: M + 2, right: M, top: titleTop}}>
+          <div style={{position: 'absolute', left: L, right: R, top: blockTop}}>{overline}</div>
+          <div style={{position: 'absolute', left: L, width: tabsTop > VIDEO.lowZoneStart ? lowTextW : upTextW, top: titleTop}}>
             <LayerTitle
               current={layers[seg.layer].label}
               previous={wiping && prev ? layers[prev.layer].label : null}
@@ -254,7 +268,7 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
           <div
             style={{
               position: 'absolute',
-              left: M,
+              left: boxLeft,
               top: boxTop,
               width: boxW,
               height: boxH,
@@ -272,8 +286,8 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
               }}
             />
           </div>
-          <div style={{position: 'absolute', left: M, right: M, top: tabsTop, display: 'flex'}}>
-            <LayerTabs labels={labels} activeness={activeness} maxWidth={contentW} />
+          <div style={{position: 'absolute', left: L, width: tabsW, top: tabsTop, display: 'flex'}}>
+            <LayerTabs labels={labels} activeness={activeness} maxWidth={tabsW} />
           </div>
         </>
       )}
