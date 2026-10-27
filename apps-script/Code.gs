@@ -36,7 +36,7 @@ function checkInbox() {
 
       writeJson_(file, Object.assign(cfg, {status: 'queued', queuedAt: new Date().toISOString(), error: null}));
       try {
-        dispatch_(folder);
+        dispatch_(folder, cfg);
         console.log('Rendu lancé : ' + folder.getName());
       } catch (e) {
         writeJson_(file, Object.assign(cfg, {status: 'error', error: String(e.message).slice(0, 400)}));
@@ -48,7 +48,7 @@ function checkInbox() {
   }
 }
 
-function dispatch_(folder) {
+function dispatch_(folder, cfg) {
   const gh = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
   if (!gh) throw new Error('GITHUB_TOKEN manquant dans les propriétés du script');
   const res = UrlFetchApp.fetch('https://api.github.com/repos/' + CONFIG.REPO + '/dispatches', {
@@ -61,6 +61,8 @@ function dispatch_(folder) {
         folder_id: folder.getId(),
         shot_name: folder.getName(),
         out_folder_id: CONFIG.OUT_ID,
+        // réglages figés au moment du lancement : le rendu ne dépend plus du shot.json resté dans Drive
+        config: cfg,
         // jeton Drive temporaire (1 h) pour que GitHub télécharge le shot et dépose le MP4
         token: ScriptApp.getOAuthToken(),
       },
