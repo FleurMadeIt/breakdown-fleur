@@ -4,6 +4,8 @@ Génère un breakdown VFX avant/après en 9:16 (1080×1920), toujours dans le m�
 
 FINAL (accroche) → wipe → PLATE → wipe → passes… → wipe → FINAL (la vidéo boucle).
 
+**Pour l'installer chez toi (Drive + GitHub, gratuit) : suis [INSTALL.md](INSTALL.md).**
+
 ## 1. Préparer un shot
 
 Un dossier par shot, couches numérotées dans l'ordre d'apparition :

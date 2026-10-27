@@ -3,18 +3,30 @@
  * Toutes les 5 min : cherche dans Drive/Breakdowns/_inbox les shots dont le shot.json
  * est en "status": "ready", les passe en "queued" et lance le rendu sur GitHub Actions.
  *
- * Installation : voir apps-script/INSTALL.md
+ * Installation : voir INSTALL.md à la racine du repo.
+ * Propriétés du script à renseigner (⚙️ Paramètres du projet → Propriétés du script) :
+ *   GITHUB_REPO   ton-compte/breakdown-fleur
+ *   GITHUB_TOKEN  github_pat_…  (accès à ce repo, permission Contents en lecture/écriture)
+ * Les propriétés INBOX_ID et OUT_ID sont remplies toutes seules par setup().
  */
-const CONFIG = {
-  INBOX_ID: '1f6HDDYW2pP95lgJZu0y_yie2a4PllufX', // Drive/Breakdowns/_inbox
-  OUT_ID: '1pawuvOdhSTmfkCtPT5wlqkUSrHa7kgfz', // Drive/Breakdowns/_out
-  REPO: 'FleurMadeIt/breakdown-fleur',
-};
+
+function config_() {
+  const p = PropertiesService.getScriptProperties();
+  const cfg = {
+    INBOX_ID: p.getProperty('INBOX_ID'),
+    OUT_ID: p.getProperty('OUT_ID'),
+    REPO: (p.getProperty('GITHUB_REPO') || '').trim(),
+    TOKEN: (p.getProperty('GITHUB_TOKEN') || '').trim(),
+  };
+  if (!cfg.INBOX_ID || !cfg.OUT_ID) throw new Error('Lance setup() une fois pour créer les dossiers Breakdowns.');
+  return cfg;
+}
 
 function checkInbox() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return;
   try {
+    const CONFIG = config_();
     const folders = DriveApp.getFolderById(CONFIG.INBOX_ID).getFolders();
     while (folders.hasNext()) {
       const folder = folders.next();
@@ -36,7 +48,7 @@ function checkInbox() {
 
       writeJson_(file, Object.assign(cfg, {status: 'queued', queuedAt: new Date().toISOString(), error: null}));
       try {
-        dispatch_(folder, cfg);
+        dispatch_(CONFIG, folder, cfg);
         console.log('Rendu lancé : ' + folder.getName());
       } catch (e) {
         writeJson_(file, Object.assign(cfg, {status: 'error', error: String(e.message).slice(0, 400)}));
@@ -48,13 +60,13 @@ function checkInbox() {
   }
 }
 
-function dispatch_(folder, cfg) {
-  const gh = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  if (!gh) throw new Error('GITHUB_TOKEN manquant dans les propriétés du script');
+function dispatch_(CONFIG, folder, cfg) {
+  if (!CONFIG.REPO) throw new Error('GITHUB_REPO manquant dans les propriétés du script (ex. ton-compte/breakdown-fleur)');
+  if (!CONFIG.TOKEN) throw new Error('GITHUB_TOKEN manquant dans les propriétés du script');
   const res = UrlFetchApp.fetch('https://api.github.com/repos/' + CONFIG.REPO + '/dispatches', {
     method: 'post',
     contentType: 'application/json',
-    headers: {Authorization: 'Bearer ' + gh, Accept: 'application/vnd.github+json'},
+    headers: {Authorization: 'Bearer ' + CONFIG.TOKEN, Accept: 'application/vnd.github+json'},
     payload: JSON.stringify({
       event_type: 'render-breakdown',
       client_payload: {
@@ -109,9 +121,28 @@ function writeJson_(file, obj) {
   file.setContent(JSON.stringify(obj, null, 2));
 }
 
-/** À lancer une seule fois : crée le déclencheur toutes les 5 minutes. */
+function folderIn_(parent, name) {
+  const it = parent.getFoldersByName(name);
+  return it.hasNext() ? it.next() : parent.createFolder(name);
+}
+
+/**
+ * À lancer une seule fois : crée (ou retrouve) Breakdowns/_inbox et _out à la racine du Drive,
+ * enregistre leurs identifiants et crée le déclencheur toutes les 5 minutes.
+ */
 function setup() {
+  const root = folderIn_(DriveApp.getRootFolder(), 'Breakdowns');
+  const inbox = folderIn_(root, '_inbox');
+  const out = folderIn_(root, '_out');
+  const p = PropertiesService.getScriptProperties();
+  p.setProperty('INBOX_ID', inbox.getId());
+  p.setProperty('OUT_ID', out.getId());
+
   ScriptApp.getProjectTriggers().forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('checkInbox').timeBased().everyMinutes(5).create();
+
+  console.log('Dossier prêt : ' + root.getUrl());
+  if (!p.getProperty('GITHUB_REPO')) console.warn('Ajoute la propriété GITHUB_REPO (ex. ton-compte/breakdown-fleur).');
+  if (!p.getProperty('GITHUB_TOKEN')) console.warn('Ajoute la propriété GITHUB_TOKEN (ta clé GitHub).');
   checkInbox();
 }
