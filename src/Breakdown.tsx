@@ -59,14 +59,15 @@ const LayerTabs: React.FC<{labels: string[]; activeness: number[]; maxWidth: num
               gap: fs * 0.5,
               padding: `${fs * 0.42}px ${fs * 0.78}px ${fs * 0.42}px ${fs * 0.6}px`,
               borderRadius: theme.radius.pill,
-              border: `1.5px solid ${a > 0.5 ? 'rgba(255,255,255,0.14)' : theme.borderPill}`,
-              background: `rgba(255,255,255,${0.02 + 0.05 * a})`,
+              border: `1.5px solid ${a > 0.5 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)'}`,
+              // fond sombre opaque : les labels restent lisibles même sur un plan très clair
+              background: a > 0.5 ? 'rgba(25,26,27,0.92)' : 'rgba(8,9,10,0.78)',
               fontFamily: theme.mono,
               fontWeight: 500,
               fontSize: fs,
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
-              color: a > 0.5 ? theme.fg : theme.meta,
+              color: a > 0.5 ? theme.fg : theme.muted,
             }}
           >
             <span
@@ -211,11 +212,12 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
         fontWeight: 500,
         letterSpacing: '0.06em',
         textTransform: 'uppercase',
-        color: theme.muted,
+        color: theme.fg2,
+        textShadow: '0 1px 12px rgba(8,9,10,0.6)',
       }}
     >
       <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{title || ''}</span>
-      <span style={{color: theme.meta}}>{counter}</span>
+      <span style={{color: theme.muted}}>{counter}</span>
     </div>
   );
 
@@ -230,7 +232,7 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
           <AbsoluteFill
             style={{
               background:
-                'linear-gradient(to top, rgba(8,9,10,0.92) 0%, rgba(8,9,10,0.55) 22%, rgba(8,9,10,0) 42%), linear-gradient(to bottom, rgba(8,9,10,0.6) 0%, rgba(8,9,10,0) 20%)',
+                'linear-gradient(to top, rgba(8,9,10,0.92) 0%, rgba(8,9,10,0.82) 22%, rgba(8,9,10,0.45) 34%, rgba(8,9,10,0) 48%), linear-gradient(to bottom, rgba(8,9,10,0.78) 0%, rgba(8,9,10,0.5) 16%, rgba(8,9,10,0) 28%)',
             }}
           />
           <div style={{position: 'absolute', left: L, right: R, top: VIDEO.safeTop}}>{overline}</div>
