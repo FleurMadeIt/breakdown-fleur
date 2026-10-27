@@ -18,6 +18,11 @@ function checkInbox() {
     const folders = DriveApp.getFolderById(CONFIG.INBOX_ID).getFolders();
     while (folders.hasNext()) {
       const folder = folders.next();
+      try {
+        ensurePreview_(folder);
+      } catch (e) {
+        console.warn('Aperçu impossible pour ' + folder.getName() + ' : ' + e.message);
+      }
       const files = folder.getFilesByName('shot.json');
       if (!files.hasNext()) continue;
       const file = files.next();
@@ -65,6 +70,37 @@ function dispatch_(folder) {
   if (res.getResponseCode() !== 204) {
     throw new Error('GitHub ' + res.getResponseCode() + ' : ' + res.getContentText().slice(0, 300));
   }
+}
+
+/**
+ * Dépose preview.jpg dans le dossier du shot : la vignette que Drive génère pour la couche finale
+ * (marche aussi pour les vidéos lourdes ou en ProRes, que le navigateur ne sait pas lire).
+ */
+function ensurePreview_(folder) {
+  if (folder.getFilesByName('preview.jpg').hasNext()) return;
+  let best = null;
+  let bestScore = -1;
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const f = files.next();
+    const m = /^(\d{1,3})[ _.-]+(.+?)\.[^.]+$/.exec(f.getName());
+    if (!m || !/^(video|image)\//.test(f.getMimeType())) continue;
+    const score = /^final$/i.test(m[2]) ? 1e6 : Number(m[1]);
+    if (score > bestScore) {
+      bestScore = score;
+      best = f;
+    }
+  }
+  if (!best) return;
+  const auth = {headers: {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()}, muteHttpExceptions: true};
+  const meta = JSON.parse(
+    UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + best.getId() + '?fields=thumbnailLink', auth).getContentText(),
+  );
+  if (!meta.thumbnailLink) return; // Drive n'a pas encore fini de traiter la vidéo : on réessaie au prochain passage
+  const res = UrlFetchApp.fetch(meta.thumbnailLink.replace(/=s\d+$/, '=s1280'), auth);
+  if (res.getResponseCode() !== 200) return;
+  folder.createFile(res.getBlob().setName('preview.jpg'));
+  console.log('Aperçu créé : ' + folder.getName());
 }
 
 function writeJson_(file, obj) {
