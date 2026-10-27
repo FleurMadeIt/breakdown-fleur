@@ -46,6 +46,8 @@ for (const v of variants) {
     `--props=${vProps}`, '--codec=h264', '--crf=16', '--image-format=jpeg', '--jpeg-quality=95',
   ];
   if (process.env.REMOTION_BROWSER) args.push(`--browser-executable=${process.env.REMOTION_BROWSER}`);
+  // plusieurs images rendues en parallèle (GitHub : 4 cœurs)
+  if (process.env.REMOTION_CONCURRENCY) args.push(`--concurrency=${process.env.REMOTION_CONCURRENCY}`);
   execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', args, {stdio: 'inherit', cwd: ROOT, shell: process.platform === 'win32'});
   console.log(`\n\u2713 Breakdown (${v}) : ${outFile}`);
 }
