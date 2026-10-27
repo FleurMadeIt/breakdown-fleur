@@ -43,7 +43,7 @@ for (const v of variants) {
   const outFile = path.join(outDir, variants.length > 1 ? `${props.shotName}_${v}_breakdown.mp4` : `${props.shotName}_breakdown.mp4`);
   const args = [
     'remotion', 'render', 'src/index.ts', 'Breakdown', outFile,
-    `--props=${vProps}`, '--codec=h264', '--crf=16', '--image-format=jpeg', '--jpeg-quality=95',
+    `--props=${vProps}`, '--codec=h264', '--crf=20', '--image-format=jpeg', '--jpeg-quality=95',
   ];
   if (process.env.REMOTION_BROWSER) args.push(`--browser-executable=${process.env.REMOTION_BROWSER}`);
   // plusieurs images rendues en parallèle (GitHub : 4 cœurs)
