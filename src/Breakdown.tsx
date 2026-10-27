@@ -217,7 +217,7 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
       }}
     >
       <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{title || ''}</span>
-      <span style={{color: theme.muted}}>{counter}</span>
+      <span style={{color: theme.fg2, opacity: 0.8}}>{counter}</span>
     </div>
   );
 
@@ -232,7 +232,7 @@ export const Breakdown: React.FC<ShotProps> = ({title, framing, cropX, layers, l
           <AbsoluteFill
             style={{
               background:
-                'linear-gradient(to top, rgba(8,9,10,0.92) 0%, rgba(8,9,10,0.82) 22%, rgba(8,9,10,0.45) 34%, rgba(8,9,10,0) 48%), linear-gradient(to bottom, rgba(8,9,10,0.78) 0%, rgba(8,9,10,0.5) 16%, rgba(8,9,10,0) 28%)',
+                'linear-gradient(to top, rgba(8,9,10,0.37) 0%, rgba(8,9,10,0.33) 22%, rgba(8,9,10,0.18) 34%, rgba(8,9,10,0) 48%), linear-gradient(to bottom, rgba(8,9,10,0.31) 0%, rgba(8,9,10,0.2) 16%, rgba(8,9,10,0) 28%)',
             }}
           />
           <div style={{position: 'absolute', left: L, right: R, top: VIDEO.safeTop}}>{overline}</div>
